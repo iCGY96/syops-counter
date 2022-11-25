@@ -9,7 +9,7 @@ Copyright (C) 2022 Guangyao Chen - All Rights Reserved
 import torch
 import numpy as np
 import torch.nn as nn
-from spikingjelly.clock_driven import neuron as cext_neuron
+from spikingjelly.clock_driven.neuron import MultiStepIFNode, MultiStepLIFNode, IFNode, LIFNode
 
 def spike_rate(inp):
     # T = inp.shape[1]
@@ -24,7 +24,7 @@ def spike_rate(inp):
     return spike, spike_rate
 
 def empty_syops_counter_hook(module, input, output):
-    module.__syops__ += np.array([0, 0, 0])
+    module.__syops__ += np.array([0.0, 0.0, 0.0, 0.0])
 
 
 def upsample_syops_counter_hook(module, input, output):
@@ -42,6 +42,8 @@ def upsample_syops_counter_hook(module, input, output):
     else:
         module.__syops__[2] += int(output_elements_count)
 
+    module.__syops__[3] += rate * 100
+
 def relu_syops_counter_hook(module, input, output):
     active_elements_count = output.numel()
     module.__syops__[0] += int(active_elements_count)
@@ -53,20 +55,24 @@ def relu_syops_counter_hook(module, input, output):
     else:
         module.__syops__[2] += int(active_elements_count)
 
+    module.__syops__[3] += rate * 100
 
 def IF_syops_counter_hook(module, input, output):
-    active_elements_count = output.numel()
+    active_elements_count = input[0].numel()
     module.__syops__[0] += int(active_elements_count)
 
-    spike, rate = spike_rate(output[0])
+    spike, rate = spike_rate(input[0])
     module.__syops__[1] += int(active_elements_count) * rate
+    module.__syops__[3] += rate * 100
 
 def LIF_syops_counter_hook(module, input, output):
-    active_elements_count = output.numel()
+    active_elements_count = input[0].numel()
     module.__syops__[0] += int(active_elements_count)
 
-    spike, rate = spike_rate(output[0])
-    module.__syops__[2] += int(active_elements_count) * rate
+    spike, rate = spike_rate(input[0])
+    module.__syops__[1] += int(active_elements_count) * rate
+    module.__syops__[2] += int(active_elements_count)
+    module.__syops__[3] += rate * 100
 
 def linear_syops_counter_hook(module, input, output):
     input = input[0]
@@ -81,6 +87,8 @@ def linear_syops_counter_hook(module, input, output):
     else:
         module.__syops__[2] += int(np.prod(input.shape) * output_last_dim + bias_syops)
 
+    module.__syops__[3] += rate * 100
+
 
 def pool_syops_counter_hook(module, input, output):
     input = input[0]
@@ -91,6 +99,14 @@ def pool_syops_counter_hook(module, input, output):
         module.__syops__[1] += int(np.prod(input.shape)) * rate
     else:
         module.__syops__[2] += int(np.prod(input.shape))
+
+    module.__syops__[3] += rate * 100
+
+def avgpool_syops_counter_hook(module, input, output):
+    input = input[0]
+    module.__syops__[0] += int(np.prod(input.shape)) 
+    module.__syops__[2] += int(np.prod(input.shape))
+    module.__syops__[3] += 1. * 100
 
 
 def bn_syops_counter_hook(module, input, output):
@@ -105,6 +121,8 @@ def bn_syops_counter_hook(module, input, output):
         module.__syops__[1] += int(batch_syops) * rate
     else:
         module.__syops__[2] += int(batch_syops)
+    
+    module.__syops__[3] += rate * 100
 
 
 def conv_syops_counter_hook(conv_module, input, output):
@@ -143,6 +161,7 @@ def conv_syops_counter_hook(conv_module, input, output):
     else:
         conv_module.__syops__[2] += int(overall_syops)
 
+    conv_module.__syops__[3] += rate * 100
 
 
 def rnn_syops(syops, rnn_module, w_ih, w_hh, input_size):
@@ -300,28 +319,28 @@ MODULES_MAPPING = {
     nn.ReLU6: relu_syops_counter_hook,
     # poolings
     nn.MaxPool1d: pool_syops_counter_hook,
-    nn.AvgPool1d: pool_syops_counter_hook,
-    nn.AvgPool2d: pool_syops_counter_hook,
+    nn.AvgPool1d: avgpool_syops_counter_hook,
+    nn.AvgPool2d: avgpool_syops_counter_hook,
     nn.MaxPool2d: pool_syops_counter_hook,
     nn.MaxPool3d: pool_syops_counter_hook,
-    nn.AvgPool3d: pool_syops_counter_hook,
+    nn.AvgPool3d: avgpool_syops_counter_hook,
     nn.AdaptiveMaxPool1d: pool_syops_counter_hook,
-    nn.AdaptiveAvgPool1d: pool_syops_counter_hook,
+    nn.AdaptiveAvgPool1d: avgpool_syops_counter_hook,
     nn.AdaptiveMaxPool2d: pool_syops_counter_hook,
-    nn.AdaptiveAvgPool2d: pool_syops_counter_hook,
+    nn.AdaptiveAvgPool2d: avgpool_syops_counter_hook,
     nn.AdaptiveMaxPool3d: pool_syops_counter_hook,
-    nn.AdaptiveAvgPool3d: pool_syops_counter_hook,
+    nn.AdaptiveAvgPool3d: avgpool_syops_counter_hook,
     # BNs
     nn.BatchNorm1d: bn_syops_counter_hook,
     nn.BatchNorm2d: bn_syops_counter_hook,
     nn.BatchNorm3d: bn_syops_counter_hook,
 
     # Neuron IF
-    cext_neuron.MultiStepIFNode: IF_syops_counter_hook,
-    cext_neuron.IFNode: IF_syops_counter_hook,
+    MultiStepIFNode: IF_syops_counter_hook,
+    IFNode: IF_syops_counter_hook,
     # Neuron LIF
-    cext_neuron.MultiStepLIFNode: LIF_syops_counter_hook,
-    cext_neuron.LIFNode: LIF_syops_counter_hook,
+    MultiStepLIFNode: LIF_syops_counter_hook,
+    LIFNode: LIF_syops_counter_hook,
 
     nn.InstanceNorm1d: bn_syops_counter_hook,
     nn.InstanceNorm2d: bn_syops_counter_hook,

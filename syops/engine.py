@@ -16,7 +16,7 @@ import torch.nn as nn
 from progress.bar import Bar as Bar
 from spikingjelly.clock_driven import surrogate, neuron, functional
 
-from .pytorch_ops import CUSTOM_MODULES_MAPPING, MODULES_MAPPING
+from .ops import CUSTOM_MODULES_MAPPING, MODULES_MAPPING
 from .utils import syops_to_string, params_to_string
 
 
@@ -37,7 +37,7 @@ def get_syops_pytorch(model, input_res, dataloader=None,
                                 ignore_list=ignore_modules)
 
     if dataloader is not None:
-        syops_count = np.array([0.0, 0.0, 0.0])
+        syops_count = np.array([0.0, 0.0, 0.0, 0.0])
         bar = Bar('Processing', max=len(dataloader))
         batch_idx = 0
         for batch, _ in dataloader:
@@ -54,6 +54,8 @@ def get_syops_pytorch(model, input_res, dataloader=None,
 
             bar.suffix = '({batch}/{size})'.format(batch=batch_idx, size=len(dataloader))
             bar.next()
+            # if batch_idx >= 1: break
+
         bar.finish()
         syops_count, params_count = syops_model.compute_average_syops_cost()
         # syops_count += syops_item / len(dataloader)
@@ -93,7 +95,7 @@ def accumulate_syops(self):
     if is_supported_instance(self):
         return self.__syops__
     else:
-        sum = np.array([0, 0, 0])
+        sum = np.array([0.0, 0.0, 0.0, 0.0])
         for m in self.children():
             sum += m.accumulate_syops()
         return sum
@@ -119,7 +121,11 @@ def print_model_with_syops(model, total_syops, total_params, syops_units='GMac',
 
     def syops_repr(self):
         accumulated_params_num = self.accumulate_params()
-        accumulated_syops_cost = self.accumulate_syops() / model.__batch_counter__
+        accumulated_syops_cost = self.accumulate_syops() 
+        accumulated_syops_cost[0] /= model.__batch_counter__
+        accumulated_syops_cost[1] /= model.__batch_counter__
+        accumulated_syops_cost[2] /= model.__batch_counter__
+        accumulated_syops_cost[3] /= model.__times_counter__
         return ', '.join([params_to_string(accumulated_params_num,
                                            units=param_units, precision=precision),
                           '{:.3%} Params'.format(accumulated_params_num / total_params),
@@ -129,12 +135,19 @@ def print_model_with_syops(model, total_syops, total_params, syops_units='GMac',
                           syops_to_string(accumulated_syops_cost[2],
                                           units=syops_units, precision=precision),
                           '{:.3%} MACs'.format(accumulated_syops_cost[2] / total_syops[2]),
-                          self.original_extra_repr()])
+                          '{:.3%} Spike Rate'.format(accumulated_syops_cost[3] / 100.)])
+                        #   self.original_extra_repr()])
+    
+    def syops_repr_empty(self):
+        return ''
 
     def add_extra_repr(m):
         m.accumulate_syops = accumulate_syops.__get__(m)
         m.accumulate_params = accumulate_params.__get__(m)
-        syops_extra_repr = syops_repr.__get__(m)
+        if is_supported_instance(m):
+            syops_extra_repr = syops_repr.__get__(m)
+        else:
+            syops_extra_repr = syops_repr_empty.__get__(m)
         if m.extra_repr != syops_extra_repr:
             m.original_extra_repr = m.extra_repr
             m.extra_repr = syops_extra_repr
@@ -270,11 +283,13 @@ def batch_counter_hook(module, input, output):
         print('Warning! No positional inputs found for a module,'
               ' assuming batch size is 1.')
     module.__batch_counter__ += batch_size
+    module.__times_counter__ += 1
 
 
 def add_batch_counter_variables_or_reset(module):
 
     module.__batch_counter__ = 0
+    module.__times_counter__ = 0
 
 
 def add_batch_counter_hook_function(module):
@@ -299,7 +314,7 @@ def add_syops_counter_variable_or_reset(module):
                   ' syops can affect your code!')
             module.__syops_backup_syops__ = module.__syops__
             module.__syops_backup_params__ = module.__params__
-        module.__syops__ = np.array([0, 0, 0])
+        module.__syops__ = np.array([0.0, 0.0, 0.0, 0.0])
         module.__params__ = get_model_parameters_number(module)
 
 

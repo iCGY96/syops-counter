@@ -10,7 +10,7 @@ import sys
 
 import torch.nn as nn
 
-from .pytorch_engine import get_syops_pytorch
+from .engine import get_syops_pytorch
 from .utils import syops_to_string, params_to_string
 
 

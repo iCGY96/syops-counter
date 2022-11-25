@@ -67,7 +67,9 @@ with torch.cuda.device(0):
 ## Benchmark
 Model             | Input Resolution | Params(M) | ACs(G)  | MACs(G) | Energy (mJ) | Acc@1       | Acc@5
 ---               |---               |---        |---      |---      |---          | ---         |---
-spiking_resnet18  |224x224           | 11.69     | 0.09    | 0.13    |             | 62.32       | 84.05
+spiking_resnet18  |224x224           | 11.69     | 0.10    | 0.14    | 0.734       | 62.32       | 84.05
+sew_resnet18      |224x224           | 11.69     | 0.50    | 2.75    | 13.10       | 63.18       | 84.53
+resnet18          |224x224           | 11.69     | 0.00    | 1.82    | 8.372       | 69.76       | 89.08
 
 
 * ACs(G) - The theoretical amount of accumulated operations based on spike signals.

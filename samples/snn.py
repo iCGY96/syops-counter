@@ -7,6 +7,8 @@ from torchvision import transforms
 
 from spikingjelly.clock_driven import surrogate, neuron, functional
 import spiking_resnet
+import sew_resnet
+from torchvision import models as models
 
 from syops import get_model_complexity_info
 
@@ -42,16 +44,19 @@ if __name__ == '__main__':
             dataset, batch_size=64, drop_last=True, 
             num_workers=4, pin_memory=True)
 
-    net = spiking_resnet.spiking_resnet18(T=4)
+    # net = spiking_resnet.spiking_resnet18(T=4)
+    # net = sew_resnet.sew_resnet18(T=4, connect_f='ADD')
 
-    model_without_ddp = net
-    checkpoint = torch.load(args.resume, map_location='cpu')
-    from collections import OrderedDict
-    new_state_dict = OrderedDict()
-    for k, v in checkpoint['model'].items():
-        name = k.replace('module.', '')
-        new_state_dict[name] = v
-    model_without_ddp.load_state_dict(new_state_dict)
+    # model_without_ddp = net
+    # checkpoint = torch.load(args.resume, map_location='cpu')
+    # from collections import OrderedDict
+    # new_state_dict = OrderedDict()
+    # for k, v in checkpoint['model'].items():
+    #     name = k.replace('module.', '')
+    #     new_state_dict[name] = v
+    # model_without_ddp.load_state_dict(new_state_dict)
+    
+    net = models.resnet18()
 
     if torch.cuda.is_available():
         net.cuda(device=args.device)

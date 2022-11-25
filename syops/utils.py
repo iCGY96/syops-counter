@@ -10,22 +10,22 @@ Copyright (C) 2021 Sovrasov V. - All Rights Reserved
 def syops_to_string(syops, units=None, precision=2):
     if units is None:
         if syops // 10**9 > 0:
-            return str(round(syops / 10.**9, precision)) + ' GMac'
+            return str(round(syops / 10.**9, precision)) + ' G Ops'
         elif syops // 10**6 > 0:
-            return str(round(syops / 10.**6, precision)) + ' MMac'
+            return str(round(syops / 10.**6, precision)) + ' M Ops'
         elif syops // 10**3 > 0:
-            return str(round(syops / 10.**3, precision)) + ' KMac'
+            return str(round(syops / 10.**3, precision)) + ' K Ops'
         else:
-            return str(syops) + ' Mac'
+            return str(syops) + ' Ops'
     else:
-        if units == 'GMac':
+        if units == 'G Ops':
             return str(round(syops / 10.**9, precision)) + ' ' + units
-        elif units == 'MMac':
+        elif units == 'M Ops':
             return str(round(syops / 10.**6, precision)) + ' ' + units
-        elif units == 'KMac':
+        elif units == 'K Ops':
             return str(round(syops / 10.**3, precision)) + ' ' + units
         else:
-            return str(syops) + ' Mac'
+            return str(syops) + ' Ops'
 
 
 def params_to_string(params_num, units=None, precision=2):
