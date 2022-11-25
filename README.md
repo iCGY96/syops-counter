@@ -6,6 +6,9 @@ This script is designed to compute the theoretical amount of synaptic operations
 in spiking neural networks, including accumulated (AC) and multiply-accumulate (MAC) operations. 
 It can also compute the number of parameters and
 print per-layer computational cost of a given network.
+__This tool is still under construction. 
+Comments, issues, contributions, and collaborations are all welcomed!__
+
 
 Supported layers:
 - Conv1d/2d/3d (including grouping)
