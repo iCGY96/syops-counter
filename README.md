@@ -18,7 +18,7 @@ Supported layers:
 - Linear
 - Upsample
 - Poolings (AvgPool1d/2d/3d, MaxPool1d/2d/3d and adaptive ones)
-- LF/LIF ([spikingjelly](https://github.com/fangwei123456/spikingjelly))
+- LF/LIF/PLIF ([spikingjelly](https://github.com/fangwei123456/spikingjelly))
 
 Experimental support:
 - RNN, LSTM, GRU (NLH layout is assumed)

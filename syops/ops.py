@@ -9,7 +9,7 @@ Copyright (C) 2022 Guangyao Chen - All Rights Reserved
 import torch
 import numpy as np
 import torch.nn as nn
-from spikingjelly.clock_driven.neuron import MultiStepIFNode, MultiStepLIFNode, IFNode, LIFNode
+from spikingjelly.clock_driven.neuron import MultiStepIFNode, MultiStepLIFNode, IFNode, LIFNode, MultiStepParametricLIFNode, ParametricLIFNode
 
 def spike_rate(inp):
     # T = inp.shape[1]
@@ -341,6 +341,9 @@ MODULES_MAPPING = {
     # Neuron LIF
     MultiStepLIFNode: LIF_syops_counter_hook,
     LIFNode: LIF_syops_counter_hook,
+    # Neuron PLIF
+    MultiStepParametricLIFNode: LIF_syops_counter_hook,
+    ParametricLIFNode: LIF_syops_counter_hook,
 
     nn.InstanceNorm1d: bn_syops_counter_hook,
     nn.InstanceNorm2d: bn_syops_counter_hook,

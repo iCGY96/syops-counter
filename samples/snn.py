@@ -41,22 +41,22 @@ if __name__ == '__main__':
         ]))
 
     dataloader = torch.utils.data.DataLoader(
-            dataset, batch_size=64, drop_last=True, 
+            dataset, batch_size=20, drop_last=True, 
             num_workers=4, pin_memory=True)
 
     # net = spiking_resnet.spiking_resnet18(T=4)
-    # net = sew_resnet.sew_resnet18(T=4, connect_f='ADD')
+    net = sew_resnet.sew_resnet152(T=4, connect_f='ADD')
 
-    # model_without_ddp = net
-    # checkpoint = torch.load(args.resume, map_location='cpu')
-    # from collections import OrderedDict
-    # new_state_dict = OrderedDict()
-    # for k, v in checkpoint['model'].items():
-    #     name = k.replace('module.', '')
-    #     new_state_dict[name] = v
-    # model_without_ddp.load_state_dict(new_state_dict)
+    model_without_ddp = net
+    checkpoint = torch.load(args.resume, map_location='cpu')
+    from collections import OrderedDict
+    new_state_dict = OrderedDict()
+    for k, v in checkpoint['model'].items():
+        name = k.replace('module.', '')
+        new_state_dict[name] = v
+    model_without_ddp.load_state_dict(new_state_dict)
     
-    net = models.resnet18()
+    # net = models.resnet18()
 
     if torch.cuda.is_available():
         net.cuda(device=args.device)
@@ -64,6 +64,7 @@ if __name__ == '__main__':
     ops, params = get_model_complexity_info(net, (3, 224, 224), dataloader,
                                              as_strings=True,
                                              print_per_layer_stat=True,
+                                            #  ignore_modules=[torch.nn.BatchNorm2d],
                                              ost=ost)
     print('{:<30}  {:<8}'.format('Computational complexity OPs:', ops[0]))
     print('{:<30}  {:<8}'.format('Computational complexity ACs:', ops[1]))
