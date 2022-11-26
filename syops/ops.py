@@ -102,11 +102,11 @@ def pool_syops_counter_hook(module, input, output):
 
     module.__syops__[3] += rate * 100
 
-def avgpool_syops_counter_hook(module, input, output):
-    input = input[0]
-    module.__syops__[0] += int(np.prod(input.shape)) 
-    module.__syops__[2] += int(np.prod(input.shape))
-    module.__syops__[3] += 1. * 100
+# def avgpool_syops_counter_hook(module, input, output):
+#     input = input[0]
+#     module.__syops__[0] += int(np.prod(input.shape)) 
+#     module.__syops__[2] += int(np.prod(input.shape))
+#     module.__syops__[3] += 1. * 100
 
 
 def bn_syops_counter_hook(module, input, output):
@@ -319,17 +319,17 @@ MODULES_MAPPING = {
     nn.ReLU6: relu_syops_counter_hook,
     # poolings
     nn.MaxPool1d: pool_syops_counter_hook,
-    nn.AvgPool1d: avgpool_syops_counter_hook,
-    nn.AvgPool2d: avgpool_syops_counter_hook,
+    nn.AvgPool1d: pool_syops_counter_hook,
+    nn.AvgPool2d: pool_syops_counter_hook,
     nn.MaxPool2d: pool_syops_counter_hook,
     nn.MaxPool3d: pool_syops_counter_hook,
-    nn.AvgPool3d: avgpool_syops_counter_hook,
+    nn.AvgPool3d: pool_syops_counter_hook,
     nn.AdaptiveMaxPool1d: pool_syops_counter_hook,
-    nn.AdaptiveAvgPool1d: avgpool_syops_counter_hook,
+    nn.AdaptiveAvgPool1d: pool_syops_counter_hook,
     nn.AdaptiveMaxPool2d: pool_syops_counter_hook,
-    nn.AdaptiveAvgPool2d: avgpool_syops_counter_hook,
+    nn.AdaptiveAvgPool2d: pool_syops_counter_hook,
     nn.AdaptiveMaxPool3d: pool_syops_counter_hook,
-    nn.AdaptiveAvgPool3d: avgpool_syops_counter_hook,
+    nn.AdaptiveAvgPool3d: pool_syops_counter_hook,
     # BNs
     nn.BatchNorm1d: bn_syops_counter_hook,
     nn.BatchNorm2d: bn_syops_counter_hook,
