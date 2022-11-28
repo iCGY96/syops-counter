@@ -61,17 +61,17 @@ def IF_syops_counter_hook(module, input, output):
     active_elements_count = input[0].numel()
     module.__syops__[0] += int(active_elements_count)
 
-    spike, rate = spike_rate(input[0])
-    module.__syops__[1] += int(active_elements_count) * rate
+    spike, rate = spike_rate(output[0])
+    module.__syops__[1] += int(active_elements_count)
     module.__syops__[3] += rate * 100
 
 def LIF_syops_counter_hook(module, input, output):
     active_elements_count = input[0].numel()
     module.__syops__[0] += int(active_elements_count)
 
-    spike, rate = spike_rate(input[0])
-    module.__syops__[1] += int(active_elements_count) * rate
-    module.__syops__[2] += int(active_elements_count)
+    spike, rate = spike_rate(output[0])
+    module.__syops__[1] += int(active_elements_count)
+    # module.__syops__[2] += int(active_elements_count)
     module.__syops__[3] += rate * 100
 
 def linear_syops_counter_hook(module, input, output):
@@ -101,13 +101,6 @@ def pool_syops_counter_hook(module, input, output):
         module.__syops__[2] += int(np.prod(input.shape))
 
     module.__syops__[3] += rate * 100
-
-# def avgpool_syops_counter_hook(module, input, output):
-#     input = input[0]
-#     module.__syops__[0] += int(np.prod(input.shape)) 
-#     module.__syops__[2] += int(np.prod(input.shape))
-#     module.__syops__[3] += 1. * 100
-
 
 def bn_syops_counter_hook(module, input, output):
     input = input[0]
