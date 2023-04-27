@@ -25,7 +25,7 @@ Experimental support:
 - RNNCell, LSTMCell, GRUCell
 - MultiheadAttention
 
-Requirements: Pytorch >= 1.1, torchvision >= 0.3, spikingjelly>=0.0.0.0.10
+Requirements: Pytorch >= 1.1, torchvision >= 0.3, spikingjelly<=0.0.0.0.12
 
 ## Usage
 
