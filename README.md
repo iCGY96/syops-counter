@@ -83,6 +83,19 @@ resnet18          |224x224           | 11.69     | 0.00    | 1.82    | 8.372    
 * Acc@5 - ImageNet single-crop top-5 accuracy on validation images of the same size used during the training process.
 
 
+## Citation
+
+If you find our work useful for your repo, please consider giving a star :star: and citation :beer::
+
+```bibtex
+@article{chen2023training,
+  title={Training Full Spike Neural Networks via Auxiliary Accumulation Pathway},
+  author={Chen, Guangyao and Peng, Peixi and Li, Guoqi and Tian, Yonghong},
+  journal={arXiv preprint arXiv:2301.11929},
+  year={2023}
+}
+```
+
 ## Acknowledgements
 
 This repository is developed based on [ptflops](https://github.com/sovrasov/flops-counter.pytorch)
