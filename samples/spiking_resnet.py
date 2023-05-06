@@ -1,7 +1,11 @@
 import torch
 import torch.nn as nn
-from spikingjelly.clock_driven import layer
-from spikingjelly.clock_driven import neuron as cext_neuron
+try:
+    from spikingjelly.clock_driven import layer
+    from spikingjelly.clock_driven import neuron as cext_neuron
+except:
+    from spikingjelly.activation_based import layer
+    from spikingjelly.activation_based import neuron as cext_neuron
 
 __all__ = ['SpikingResNet', 'spiking_resnet18', 'spiking_resnet34', 'spiking_resnet50', 'spiking_resnet101',
            'spiking_resnet152']

@@ -1,5 +1,7 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
+
 try:
     from spikingjelly.clock_driven import layer
     from spikingjelly.clock_driven import neuron as cext_neuron
@@ -7,8 +9,8 @@ except:
     from spikingjelly.activation_based import layer
     from spikingjelly.activation_based import neuron as cext_neuron
 
-__all__ = ['SEWResNet', 'sew_resnet18', 'sew_resnet34', 'sew_resnet50', 'sew_resnet101',
-           'sew_resnet152']
+__all__ = ['DSNN', 'dsnn18', 'dsnn34', 'dsnn50', 'dsnn101',
+           'dsnn152']
 
 def conv3x3(in_planes, out_planes, stride=1, groups=1, dilation=1):
     """3x3 convolution with padding"""
@@ -20,6 +22,16 @@ def conv1x1(in_planes, out_planes, stride=1):
     """1x1 convolution"""
     return nn.Conv2d(in_planes, out_planes, kernel_size=1, stride=stride, bias=False)
 
+def convpxp(in_planes, out_planes, stride=1, dilation=1):
+    """3x3 convolution with padding"""
+    if stride != 1:
+        return nn.Sequential(
+            nn.Conv2d(in_planes, in_planes, kernel_size=3, stride=stride,
+                        groups=in_planes, padding=1, bias=False),
+            nn.Conv2d(in_planes, out_planes, kernel_size=1, stride=1, bias=False)
+        )
+    else:
+        return nn.Conv2d(in_planes, out_planes, kernel_size=1, stride=1, bias=False)
 
 class BasicBlock(nn.Module):
     expansion = 1
@@ -46,30 +58,41 @@ class BasicBlock(nn.Module):
             norm_layer(planes)
         )
         self.downsample = downsample
+        if self.downsample is not None:
+            self.pool = layer.SeqToANNContainer(
+                convpxp(inplanes, planes * self.expansion, stride),
+                norm_layer(planes * self.expansion),
+                nn.ReLU(),
+            )
         self.stride = stride
         self.sn2 = cext_neuron.MultiStepIFNode(detach_reset=True)
 
     def forward(self, x):
-        identity = x
+        identity = x[0]
+        x_acc = x[1]
 
-        out = self.sn1(self.conv1(x))
+        out = self.sn1(self.conv1(identity))
 
         out = self.sn2(self.conv2(out))
 
         if self.downsample is not None:
-            identity = self.downsample(x)
+            identity = self.downsample(identity)
+            x_acc = self.pool(x_acc)
 
-        if self.connect_f == 'ADD':
-            out += identity
-        elif self.connect_f == 'AND':
-            out *= identity
+        x_acc = x_acc + out
+
+        if self.connect_f == 'AND':
+            out = out * identity
         elif self.connect_f == 'IAND':
             out = identity * (1. - out)
+        elif self.connect_f == 'OR':
+            out = out + identity - (identity * out)
+        elif self.connect_f == 'XOR':
+            out = identity * (1. - out) + out * (1. - identity)
         else:
             raise NotImplementedError(self.connect_f)
 
-        return out
-
+        return [out, x_acc]
 
 class Bottleneck(nn.Module):
     expansion = 4
@@ -97,50 +120,58 @@ class Bottleneck(nn.Module):
             norm_layer(planes * self.expansion)
         )
         self.downsample = downsample
+        if self.downsample is not None:
+            self.pool = layer.SeqToANNContainer(
+                    convpxp(inplanes, planes * self.expansion, stride),
+                    norm_layer(planes * self.expansion),
+                    nn.ReLU()
+                )
         self.stride = stride
         self.sn3 = cext_neuron.MultiStepIFNode(detach_reset=True)
 
     def forward(self, x):
-        identity = x
+        identity = x[0]
+        x_acc = x[1]
 
-        out = self.sn1(self.conv1(x))
+        out = self.sn1(self.conv1(identity))
 
         out = self.sn2(self.conv2(out))
 
         out = self.sn3(self.conv3(out))
 
         if self.downsample is not None:
-            identity = self.downsample(x)
+            identity = self.downsample(identity)
+            x_acc = self.pool(x_acc)
 
-        
-        if self.connect_f == 'ADD':
-            out += identity
-        elif self.connect_f == 'AND':
-            out *= identity
+        x_acc = x_acc + out
+
+        if self.connect_f == 'AND':
+            out = out * identity
         elif self.connect_f == 'IAND':
             out = identity * (1. - out)
+        elif self.connect_f == 'OR':
+            out = out + identity - (identity * out)
+        elif self.connect_f == 'XOR':
+            out = identity * (1. - out) + out * (1. - identity)
         else:
             raise NotImplementedError(self.connect_f)
 
-        return out
+        return [out, x_acc]
+
+
 def zero_init_blocks(net: nn.Module, connect_f: str):
     for m in net.modules():
         if isinstance(m, Bottleneck):
             nn.init.constant_(m.conv3.module[1].weight, 0)
-            if connect_f == 'AND':
-                nn.init.constant_(m.conv3.module[1].bias, 1)
         elif isinstance(m, BasicBlock):
             nn.init.constant_(m.conv2.module[1].weight, 0)
-            if connect_f == 'AND':
-                nn.init.constant_(m.conv2.module[1].bias, 1)
 
-
-class SEWResNet(nn.Module):
+class DSNN(nn.Module):
 
     def __init__(self, block, layers, num_classes=1000, zero_init_residual=False,
                  groups=1, width_per_group=64, replace_stride_with_dilation=None,
                  norm_layer=None, T=4, connect_f=None):
-        super(SEWResNet, self).__init__()
+        super(DSNN, self).__init__()
         self.T = T
         self.connect_f = connect_f
         if norm_layer is None:
@@ -173,6 +204,7 @@ class SEWResNet(nn.Module):
                                        dilate=replace_stride_with_dilation[2], connect_f=connect_f)
         self.avgpool = layer.SeqToANNContainer(nn.AdaptiveAvgPool2d((1, 1)))
         self.fc = nn.Linear(512 * block.expansion, num_classes)
+        self.fc_acc = nn.Linear(512 * block.expansion, num_classes)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -218,39 +250,46 @@ class SEWResNet(nn.Module):
         x = x.repeat(self.T, 1, 1, 1, 1)
         x = self.sn1(x)
         x = self.maxpool(x)
+        x = [x, x]
         x = self.layer1(x)
         x = self.layer2(x)
         x = self.layer3(x)
-        x = self.layer4(x)
+        feat = self.layer4(x)
 
-        x = self.avgpool(x)
+        x = self.avgpool(feat[0])
         x = torch.flatten(x, 2)
-        return self.fc(x.mean(dim=0))
+        x = self.fc(x.mean(dim=0))
+
+        x_acc = self.avgpool(feat[1])
+        x_acc = torch.flatten(x_acc, 2)
+        x_acc = self.fc(x_acc.mean(dim=0))
+
+        return x, x_acc
 
     def forward(self, x):
         return self._forward_impl(x)
 
 
-def _sew_resnet(block, layers, **kwargs):
-    model = SEWResNet(block, layers, **kwargs)
+def _d_snn(block, layers, **kwargs):
+    model = DSNN(block, layers, **kwargs)
     return model
 
 
-def sew_resnet18(**kwargs):
-    return _sew_resnet(BasicBlock, [2, 2, 2, 2], **kwargs)
+def dsnn18(**kwargs):
+    return _d_snn(BasicBlock, [2, 2, 2, 2], **kwargs)
 
 
-def sew_resnet34(**kwargs):
-    return _sew_resnet(BasicBlock, [3, 4, 6, 3], **kwargs)
+def dsnn34(**kwargs):
+    return _d_snn(BasicBlock, [3, 4, 6, 3], **kwargs)
 
 
-def sew_resnet50(**kwargs):
-    return _sew_resnet(Bottleneck, [3, 4, 6, 3], **kwargs)
+def dsnn50(**kwargs):
+    return _d_snn(Bottleneck, [3, 4, 6, 3], **kwargs)
 
 
-def sew_resnet101(**kwargs):
-    return _sew_resnet(Bottleneck, [3, 4, 23, 3], **kwargs)
+def dsnn101(**kwargs):
+    return _d_snn(Bottleneck, [3, 4, 23, 3], **kwargs)
 
 
-def sew_resnet152(**kwargs):
-    return _sew_resnet(Bottleneck, [3, 8, 36, 3], **kwargs)
+def dsnn152(**kwargs):
+    return _d_snn(Bottleneck, [3, 8, 36, 3], **kwargs)

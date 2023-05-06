@@ -5,7 +5,11 @@ import torch
 import torchvision
 from torchvision import transforms
 
-from spikingjelly.clock_driven import surrogate, neuron, functional
+try:
+    from spikingjelly.clock_driven import surrogate, neuron, functional
+except:
+    from spikingjelly.activation_based import surrogate, neuron, functional
+    
 import spiking_resnet
 import sew_resnet
 from torchvision import models as models

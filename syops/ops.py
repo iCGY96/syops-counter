@@ -9,7 +9,11 @@ Copyright (C) 2022 Guangyao Chen - All Rights Reserved
 import torch
 import numpy as np
 import torch.nn as nn
-from spikingjelly.clock_driven.neuron import MultiStepIFNode, MultiStepLIFNode, IFNode, LIFNode, MultiStepParametricLIFNode, ParametricLIFNode
+try:
+    from spikingjelly.clock_driven.neuron import MultiStepIFNode, MultiStepLIFNode, IFNode, LIFNode, MultiStepParametricLIFNode, ParametricLIFNode
+except:
+    from spikingjelly.activation_based.neuron import MultiStepIFNode, MultiStepLIFNode, IFNode, LIFNode, MultiStepParametricLIFNode, ParametricLIFNode
+
 
 def spike_rate(inp):
     # T = inp.shape[1]
